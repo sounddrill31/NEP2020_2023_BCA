@@ -1,6 +1,7 @@
 ---
 order: 2
 title: Assignment 2
+clanker: true
 ---
 ## Q1. Explain Checksum with example.
 Checksum is an error detection method used by upper-layer protocols, considered more reliable than LRC, VRC, and CRC. It employs a Checksum Generator on the sender side and a Checksum Checker on the receiver side to create a unique number from the data for integrity verification. When data is created, a checksum is calculated and sent or saved with it. Upon accessing the data, the checksum is recalculated, and if the two match, the data is likely error-free.
@@ -131,3 +132,4 @@ Transport Layer is a 4th layer from the top. The main role of the transport laye
     - Flow control prevents the sender from overwhelming the receiver, which can lead to packet loss and increased network congestion. The Transport Layer employs the sliding window protocol to efficiently manage data transmission and ensure the receiver is not overloaded. This protocol operates on a byte-oriented basis rather than a frame-oriented one. [[1](https://www.javatpoint.com/computer-network-transport-layer)]
  
 use-AI-here-please: "Please elaborate on the problems that come with flow control"
+
