@@ -3,111 +3,124 @@ import re
 import frontmatter
 import subprocess
 import datetime
-from pathlib import Path
+import sys
 
-# --- Master Prompt ---
+# --- Configuration ---
+# This system prompt ensures the AI outputs the exact format you want.
 SYSTEM_PROMPT = """
-You are a helpful academic assistant. 
-1. Answer the user's question accurately.
-2. Skip diagrams unless they are Mermaid.js. Keep Mermaid diagrams short and simple.
-3. Formatting:
-   - Use #### (H4) headings and smaller. DO NOT use #, ##, or ###.
-   - Avoid HTML divs and spans unless absolutely necessary.
-   - Use Markdown for bolding and lists.
-4. Be concise.
-5. Keep in mind that the text will be fed to Vitepress. 
-6. Code highlighting will be done with shiki. 
+You are a technical academic assistant.
+1. ACTION: specific answer to the user's prompt.
+2. FORMATTING: 
+   - Use Markdown. 
+   - Use #### (H4) or ##### (H5) for headings. 
+   - NEVER use # (H1), ## (H2), or ### (H3).
+   - Do NOT use HTML tags (<div>, <span>) unless strictly necessary.
+3. DIAGRAMS: 
+   - Skip visual diagrams/ASCII art. 
+   - You may use 'mermaid' code blocks for diagrams if they are simple.
+4. TONE: Concise, technical, and direct.
+5. CODE: Feel free to include snippets that are short enough to represent the answer. 
 """
 
-def call_gh_copilot(prompt):
+def call_gh_model(prompt):
     """
-    Uses GitHub CLI to generate text. 
-    Assumes `gh` is authenticated in the workflow.
-    Falls back to a mock if gh model fails (for safety).
+    Sends ONLY the specific prompt string to GitHub Models/Copilot.
     """
-    full_prompt = f"{SYSTEM_PROMPT}\n\nTask: {prompt}"
+    full_prompt = f"{SYSTEM_PROMPT}\n\nUser Question: {prompt}"
     
     try:
-        # Trying to use gh model (if 'models' extension is installed or built-in)
-        # Using standard GPT-4o-mini for cost/speed efficiency if available
-        cmd = ["gh", "model", "prompt", full_prompt] 
+        # We use 'gh model' to keep it within the free/beta tier constraints
+        # Ensure 'gh extension install github/gh-models' is run in workflow
+        cmd = ["gh", "model", "prompt", "-m", "gpt-4o-mini", full_prompt] 
+        
+        # Subprocess to catch stdout
         result = subprocess.run(cmd, capture_output=True, text=True)
         
         if result.returncode == 0:
             return result.stdout.strip()
         else:
-            # Fallback: simple echo for debugging if API fails/not configured
-            print(f"GH Model failed: {result.stderr}")
-            return ""
+            print(f"API Error: {result.stderr}", file=sys.stderr)
+            return f"> **Error:** AI generation failed. Details: {result.stderr}"
     except Exception as e:
-        return f""
+        return f"> **Error:** Script failed to invoke AI. {str(e)}"
 
 def process_file(filepath):
-    post = frontmatter.load(filepath)
+    # Load the file
+    try:
+        post = frontmatter.load(filepath)
+    except Exception as e:
+        print(f"Skipping {filepath}: invalid frontmatter")
+        return
+
     content = post.content
     original_content = content
     
     # Regex to find: use-AI-here-please: "some text"
-    # Matches both: use-AI-here-please: "prompt" AND use-AI-here-please
-    pattern = re.compile(r'use-AI-here-please(?::\s*"(.*?)")?', re.IGNORECASE)
+    # Capture group 1 is the prompt text inside the quotes.
+    pattern = re.compile(r'use-AI-here-please:\s*"(.*?)"', re.IGNORECASE)
     
+    # Find all matches
     matches = list(pattern.finditer(content))
     
-    # Iterate backwards to avoid index shifting issues during replacement
+    if not matches:
+        print(f"No specific tags found in {filepath}")
+        return
+
+    print(f"Found {len(matches)} tags in {filepath}...")
+
+    # Iterate backwards so replacing text doesn't mess up character indices of earlier matches
     for match in reversed(matches):
-        full_match = match.group(0)
-        user_prompt = match.group(1)
+        prompt_text = match.group(1)
+        full_match_text = match.group(0)
         
-        if not user_prompt:
-            # If no specific prompt, look at context or use default
-            user_prompt = "Explain the concept related to this section."
-
-        print(f"Generating for: {user_prompt[:30]}... in {filepath}")
+        print(f"  - Processing: '{prompt_text[:40]}...'")
         
-        ai_response = call_gh_copilot(user_prompt)
+        # 1. Call AI with ONLY the prompt text
+        ai_response = call_gh_model(prompt_text)
         
-        # Generate Disclaimer
+        # 2. Build the Disclaimer
         date_str = datetime.datetime.now().strftime("%Y-%m-%d")
-        disclaimer = f"\n\n<sub>This was AI generated from github copilot on {date_str}</sub>\n"
+        disclaimer = f"\n<sub>This was AI generated from github copilot on {date_str}</sub>"
         
-        replacement = f"\n{ai_response}\n{disclaimer}\n"
+        # 3. Create the replacement block
+        # We add newlines to ensure markdown renders correctly
+        replacement_block = f"\n{ai_response}\n{disclaimer}\n"
         
-        # Replace the tag with response
-        start, end = match.span()
-        content = content[:start] + replacement + content[end:]
+        # 4. PYTHON performs the substitution locally
+        start_index, end_index = match.span()
+        content = content[:start_index] + replacement_block + content[end_index:]
 
-    # Check if we made changes
+    # Save changes if modifications happened
     if content != original_content:
         post.content = content
         
-        # Cleanup: Check if any use-AI tags remain. If not, remove frontmatter key.
-        if not pattern.search(content):
+        # Cleanup: Remove the trigger from frontmatter if no tags remain
+        # (We check specifically for the tag string to ensure we didn't miss any)
+        if "use-AI-here-please:" not in content:
             if 'use-AI-here-please' in post.metadata:
                 del post.metadata['use-AI-here-please']
-            # Note: We keep 'clanker: true' so we know this file is tracked, 
-            # unless you strictly want it removed too.
-            # Uncomment below to remove clanker trigger when completely done:
-            # if 'clanker' in post.metadata:
-            #     del post.metadata['clanker']
+                print("  - Removed frontmatter trigger key.")
 
         # Write back to file
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(frontmatter.dumps(post))
-        print(f"Updated {filepath}")
+        print(f"  - File updated successfully.")
 
 def main():
+    # The workflow passes the target directory via env var
     target_dir = os.environ.get("TARGET_DIR", ".")
-    print(f"Processing directory: {target_dir}")
+    print(f"Processor starting in: {target_dir}")
     
     for root, dirs, files in os.walk(target_dir):
         for file in files:
             if file.endswith(".md"):
                 fp = os.path.join(root, file)
                 
-                # Double check frontmatter before processing
+                # Check for the clanker flag before opening heavy logic
                 try:
-                    fm = frontmatter.load(fp)
-                    if fm.get('clanker') is True:
+                    with open(fp, 'r', encoding='utf-8') as f:
+                        header = f.read(500) # Read just the top
+                    if 'clanker: true' in header:
                         process_file(fp)
                 except:
                     continue
