@@ -1,8 +1,9 @@
 ---
+clanker: true
 order: 2
 title: Assignment 2
-clanker: true
 ---
+
 ## Q1. Explain Checksum with example.
 Checksum is an error detection method used by upper-layer protocols, considered more reliable than LRC, VRC, and CRC. It employs a Checksum Generator on the sender side and a Checksum Checker on the receiver side to create a unique number from the data for integrity verification. When data is created, a checksum is calculated and sent or saved with it. Upon accessing the data, the checksum is recalculated, and if the two match, the data is likely error-free.
 
@@ -131,5 +132,35 @@ Transport Layer is a 4th layer from the top. The main role of the transport laye
 
     - Flow control prevents the sender from overwhelming the receiver, which can lead to packet loss and increased network congestion. The Transport Layer employs the sliding window protocol to efficiently manage data transmission and ensure the receiver is not overloaded. This protocol operates on a byte-oriented basis rather than a frame-oriented one. [[1](https://www.javatpoint.com/computer-network-transport-layer)]
  
-use-AI-here-please: "Please elaborate on the problems that come with flow control"
 
+#### Problems Associated with Flow Control
+
+Flow control is crucial in data transmission systems to ensure the sender does not overwhelm the receiver. However, it comes with several challenges:
+
+##### 1. **Latency**
+- Flow control mechanisms can introduce delays in data transmission. If a sender must wait for an acknowledgment from the receiver before sending more data, it can slow down the overall throughput.
+
+##### 2. **Buffer Management**
+- Receivers must allocate buffer space to handle incoming data. If the buffer is full, the sender must halt transmission, which can lead to inefficiencies and potential data loss if not managed properly.
+
+##### 3. **Complexity in Protocol Design**
+- Implementing flow control adds complexity to communication protocols. Designers must balance efficiency and reliability, which can lead to intricate interactions between flow control and other protocol features.
+
+##### 4. **Congestion Control Interaction**
+- Flow control must work in tandem with congestion control mechanisms. If they are not well coordinated, it can lead to suboptimal network performance, where flow control might be too conservative, causing underutilization of network resources.
+
+##### 5. **Increased Overhead**
+- Flow control adds overhead in terms of additional signaling and protocol messages for acknowledgment and flow management. This can reduce the effective data transmission rate, especially in high-latency networks.
+
+##### 6. **Error Handling and Retransmission**
+- If errors occur during transmission, the flow control must ensure that corrupted data is not processed. This can complicate the flow control mechanism, as it may need to backtrack and retransmit data, further complicating timing and resource management.
+
+##### 7. **Scalability Issues**
+- In large networks, managing flow control for many connections simultaneously can become a bottleneck. This is especially problematic in scenarios with variable bandwidth and differing receiver capabilities.
+
+##### 8. **Protocol Compatibility**
+- Different flow control mechanisms may not be compatible across various protocols or systems. This can lead to integration issues and may require additional translation layers or adapters.
+
+In summary, while flow control is essential for reliable communication, it also introduces a range of challenges that need to be carefully addressed in system design and implementation.
+
+<sub>This was AI generated from github copilot on 2025-12-09</sub>
