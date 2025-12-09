@@ -31,15 +31,15 @@ jobs:
         id: set-matrix
         run: python scripts/scanner.py
 
-  # Job 2: Process files and create PRs per subject
+# Job 2: Process files and create PRs per subject
   process-and-pr:
     needs: scan-files
-    if: needs.scan-files.outputs.matrix != '[]'
+    if: needs.scan-files.outputs.matrix != '[]' && needs.scan-files.outputs.matrix != ''
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.scan.outputs.matrix) }}
+        include: ${{ fromJson(needs.scan-files.outputs.matrix) }}
         
     steps:
       - uses: actions/checkout@v4
