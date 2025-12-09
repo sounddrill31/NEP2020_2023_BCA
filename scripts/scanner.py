@@ -8,48 +8,50 @@ def scan_files():
     
     # Walk through the directory
     for root, dirs, files in os.walk("."):
-        if ".git" in root:
+        if ".git" in root or ".github" in root:
             continue
             
         for file in files:
             if file.endswith(".md"):
                 filepath = os.path.join(root, file)
                 try:
+                    # Load frontmatter to check for triggers
                     post = frontmatter.load(filepath)
                     
-                    # Check for explicit clanker: true
-                    if post.get('clanker') is True:
-                        # Check if "use-AI-here-please" exists in content text
-                        if "use-AI-here-please" in post.content:
+                    if post.get('clanker') is True and "use-AI-here-please" in post.content:
+                        # Normalize path to handle Windows/Linux separators
+                        norm_path = os.path.normpath(filepath)
+                        parts = norm_path.split(os.sep)
+                        
+                        # Expected Structure: 3rdsem / SubjectName / Type / file.md
+                        # We want to group by Subject (parts[0]/parts[1])
+                        if len(parts) >= 2:
+                            semester = parts[0]  # e.g., 3rdsem
+                            subject = parts[1]   # e.g., Computer-Communications-Networks
                             
-                            # Parse Path structure: ./3rdsem/SubjectName/file.md
-                            parts = os.path.normpath(filepath).split(os.sep)
+                            # Unique key for the Pull Request
+                            key = f"{semester}/{subject}"
                             
-                            if len(parts) >= 3:
-                                category = parts[1] # e.g., 3rdsem
-                                subcategory = parts[2] # e.g., Computer-Communications-Networks
-                                
-                                key = f"{category}/{subcategory}"
-                                
-                                if key not in matrix_data:
-                                    matrix_data[key] = {
-                                        "category": category,
-                                        "subcategory": subcategory,
-                                        "path": os.path.join(category, subcategory)
-                                    }
+                            if key not in matrix_data:
+                                matrix_data[key] = {
+                                    "category": semester,
+                                    "subcategory": subject,
+                                    # Use the path up to the subject so we scan recursively inside the subject
+                                    "path": os.path.join(semester, subject)
+                                }
                 except Exception as e:
                     print(f"Error parsing {filepath}: {e}", file=sys.stderr)
 
-    # Convert to list for GitHub Actions Matrix
     output_list = list(matrix_data.values())
+    output_json = json.dumps(output_list)
     
-    # Print JSON to stdout for GITHUB_OUTPUT
-    print(f"matrix={json.dumps(output_list)}")
+    # Debug print to see what it found
+    print(f"Generated Matrix: {output_json}")
     
     # Append to GITHUB_OUTPUT environment file
     if os.getenv('GITHUB_OUTPUT'):
         with open(os.getenv('GITHUB_OUTPUT'), 'a') as f:
-            f.write(f"matrix={json.dumps(output_list)}\n")
+            f.write(f"matrix={output_json}\n")
 
 if __name__ == "__main__":
     scan_files()
