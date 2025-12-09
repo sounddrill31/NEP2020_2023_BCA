@@ -9,7 +9,7 @@ from openai import OpenAI
 # GitHub Models Endpoint
 ENDPOINT = "https://models.github.ai/inference"
 # Using gpt-4o-mini as it is efficient and less likely to hit strict rate limits than full GPT-4
-MODEL_NAME = "gpt-4o-mini" 
+MODEL_NAME = "openai/gpt-4o-mini" 
 
 SYSTEM_PROMPT = """
 You are a technical academic assistant.

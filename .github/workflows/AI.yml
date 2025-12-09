@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  models: read
 
 jobs:
   # Job 1: Scan for files requiring updates and group them by subject
