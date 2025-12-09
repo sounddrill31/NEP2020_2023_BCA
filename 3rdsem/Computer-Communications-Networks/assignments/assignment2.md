@@ -127,4 +127,7 @@ Transport Layer is a 4th layer from the top. The main role of the transport laye
 - **Loss Control**:  
     - The Transport Layer ensures that all fragments of a transmission arrive at the destination. On the sending end, it assigns sequence numbers to each fragment, enabling the receiver's Transport Layer to identify any missing segments.
 - **Flow Control**:  
+
     - Flow control prevents the sender from overwhelming the receiver, which can lead to packet loss and increased network congestion. The Transport Layer employs the sliding window protocol to efficiently manage data transmission and ensure the receiver is not overloaded. This protocol operates on a byte-oriented basis rather than a frame-oriented one. [[1](https://www.javatpoint.com/computer-network-transport-layer)]
+ 
+use-AI-here-please: "Please elaborate on the problems that come with flow control"
